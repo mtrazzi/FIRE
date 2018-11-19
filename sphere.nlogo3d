@@ -1,39 +1,104 @@
-patches-own [ surface? ]
+extensions [array]
 
+patches-own [ surface? ]
+globals [recency-sf ]
+breed [ providers provider ]
+breed [ consumers consumer ]
+turtles-own [
+  v             ;rating database for term c
+  ed            ; default level of influence of the rule
+  wr            ; weight of rating
+  rul           ; roles database
+  deltaTime     ;time difference between current time and time when rating is recorded
+]
+providers-own [up      ; mean level of performance
+  sigmap               ; std
+  perform              ; performance of providers
+]
+consumers-own [alpha ;activity level
+]
 ;; ===========================================================================
-;; ============================= Main Procedures =============================
+;; ============================= setup and go Procedures =============================
 ;; ===========================================================================
 
 to setup
   clear-all
+  set recency-sf -5 / ln 0.5
   ask patches [ set surface? false ]
-
-  if surface-shape = "Sphere"          [ draw-sphere ]
-  if surface-shape = "Cube"            [ draw-cube ]
-  if surface-shape = "Convex Shape"    [ draw-convex ]
-  if surface-shape = "Mickey Mouse"    [ draw-mickey ]
-  if surface-shape = "Hollow Cylinder" [ draw-cylinder ]
-
-  if colored-surface?
-    [ ask patches with [ surface? ] [ set pcolor white ] ]
-
-  ask n-of number-of-turtles patches with [ is-border-patch? ]
+  draw-sphere
+  ask n-of 10 patches with [ is-border-patch? ]
   [
-    sprout 1 [ set size 1 ]
+    sprout-providers 1 [ set size 1
+      set color green
+      set shape "person"
+      set up 7.5
+      set sigmap 1.0
+      set perform random-normal up sigmap]
   ]
+  ask n-of 40 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set color blue
+      set shape "person"
+      set up 2.5
+      set sigmap 2.0
+      set perform random-normal up sigmap
+    ]
+  ]
+  ask n-of 5 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set color yellow
+      set shape "person"
+      set perform (random-float -5) + 5
+    ]
+  ]
+  ask n-of 45 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [ set size 1
+      set color red
+      set shape "person"
+      set up -5
+      set sigmap 2.0
+      set perform random-normal up sigmap
+    ]
+  ]
+   ask n-of 500 patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1
+      set color white
+      set shape "person"
+      set alpha alea 0.25 1]
+  ]
+
   reset-ticks
 end
 
 to go
   ask turtles [
     sfd 1
-
   ]
+  ask n-of 10 consumers [die]
+  add-consumers
   tick
 end
 
+to add-consumers
+  ask n-of 10 patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1 set color white set shape "person"]
+  ]
+end
+
 to trace
-  ask one-of turtles [ pen-down ]
+  ask turtles [ pen-down ]
+end
+
+to interaction-trust
+
+
 end
 
 ;; ===========================================================================
@@ -96,6 +161,7 @@ to-report is-border-patch? ;; patch procedure
   report any? neighbors with [surface? != [surface?] of myself]
 end
 
+
 ;; ===========================================================================
 ;; =========================== Surface Drawing ===============================
 ;; ===========================================================================
@@ -104,45 +170,6 @@ to draw-sphere
   ask patches with [ distancexyz 0 0 0 < ( world-width * 0.9 / 2 ) ]
     [ set surface? true ]
 end
-
-
-to draw-cube
-  ask patches with [ abs( pxcor ) < ( world-width * .75 / 2 ) and
-                     abs( pycor ) < ( world-width * .75 / 2 ) and
-                     abs( pzcor ) < ( world-width * .75 / 2 ) ]
-    [ set surface? true ]
-end
-
-
-to draw-convex
-  draw-cube
-  ask patches with [ distancexyz 0 0 (     world-width / 2 )
-                       < ( world-width * .75 / 2 ) or
-                     distancexyz 0 0 ( 0 - world-width / 2 )
-                       < ( world-width * .75 / 2 ) ]
-    [ set surface? false ]
-end
-
-
-to draw-mickey
-  ask patches with [ distancexyz  0 ( 0 - world-width * .2 / 2 ) 0
-                       < ( world-width * .65 / 2 ) ]
-    [ set surface? true ]
-  ask patches with [ distancexyz  ( world-width * .55 / 2 ) ( world-width * .45 / 2 ) 0
-                       < ( world-width * .35 / 2 )  ]
-    [ set surface? true ]
-  ask patches with [ distancexyz  ( 0 - world-width * .55 / 2 ) ( world-width * .45 / 2 ) 0
-                       < ( world-width * .35 / 2 )  ]
-    [ set surface? true ]
-end
-
-
-to draw-cylinder
-  ask patches with [ distancexy 0 0 < ( world-width * 0.75 / 2 ) and
-                     distancexy 0 0 > ( world-width * 0.5  / 2 ) ]
-    [ set surface? true ]
-end
-
 
 ;; ===========================================================================
 ;; ====================== Trig for Angle Calculations ========================
@@ -188,9 +215,11 @@ to-report angle-between [ angle1 pitch1 angle2 pitch2 ]
   ] ]
 end
 
+to-report alea [ #min #max ]  ; random float in given range
+  report #min + random-float (#max - #min)
+end
 
-; Copyright 2007 Uri Wilensky.
-; See Info tab for full copyright and license.
+; Copyright 2018 Sghaier and Trezzi.
 @#$#@#$#@
 GRAPHICS-WINDOW
 0
@@ -222,10 +251,10 @@ ticks
 30.0
 
 BUTTON
-13
-229
-236
-262
+11
+90
+234
+123
 NIL
 go
 T
@@ -239,10 +268,10 @@ NIL
 0
 
 BUTTON
-14
-149
-236
-182
+12
+10
+234
+43
 NIL
 setup
 NIL
@@ -255,32 +284,11 @@ NIL
 NIL
 1
 
-CHOOSER
-14
-57
-236
-102
-surface-shape
-surface-shape
-"Sphere" "Cube" "Convex Shape" "Mickey Mouse" "Hollow Cylinder"
-0
-
-SWITCH
-13
-109
-236
-142
-colored-surface?
-colored-surface?
-1
-1
--1000
-
 SLIDER
-14
-189
-236
-222
+12
+50
+234
+83
 step-size
 step-size
 0.1
@@ -291,26 +299,11 @@ step-size
 NIL
 HORIZONTAL
 
-SLIDER
-14
-17
-236
-50
-number-of-turtles
-number-of-turtles
-1
-600
-600.0
-1
-1
-turtles
-HORIZONTAL
-
 BUTTON
-13
-269
-236
-302
+11
+130
+234
+163
 NIL
 trace
 NIL
@@ -322,6 +315,17 @@ NIL
 NIL
 NIL
 0
+
+MONITOR
+251
+16
+482
+61
+total agents
+count turtles
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -709,7 +713,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 3D 6.0.4
+NetLogo 3D 6.0.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
