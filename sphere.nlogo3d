@@ -1,39 +1,692 @@
 patches-own [ surface? ]
+globals [
+   H             ; rating length
+  PL-PERFECT
+  PL-GOOD
+  PL-OK
+  PL-BAD
+  PL-WORST
+  total-providers
 
+  maxAlpha
+  minAlpha
+
+  recency-sf ;; IT recency scaling factor
+  GAMMA-I
+
+  UG-CONSUMER-FIREIT
+  UG-CONSUMER-FIREITCR
+  UG-CONSUMER-FIREITWR
+  NB-INTERACTION-FIREIT
+  NB-INTERACTION-FIREITWR
+  NB-INTERACTION-FIREITCR
+  total
+  temperature0
+  WI WW WC
+
+
+]
+breed [ providers provider ]
+breed [ consumers consumer ]
+
+providers-own [
+  typ     ; type of provider [good, bad, intermitent, ordinary]
+  up      ; mean level of performance
+  sigmap               ; std
+  history
+]
+consumers-own [
+  alpha ;activity level
+  typeC
+  nearby-providers
+  history
+  activity-level
+  temperature
+  total-UG-observed
+  nb-interaction
+]
 ;; ===========================================================================
-;; ============================= Main Procedures =============================
+;; ============================= setup and go Procedures =============================
 ;; ===========================================================================
 
 to setup
   clear-all
+  set H 10
+  set maxAlpha 1
+  set minAlpha 0.25
+
+  set PL-PERFECT 10
+  set PL-GOOD 5
+  set PL-OK 0
+  set PL-BAD -5
+  set PL-WORST -10
+  set total-providers (nbg + nbo + nbi + nbb)
+  set temperature0 10
+  set WI 2.0
+  set WW 1.0
+  set WC 0.5
+  set GAMMA-I (- ln 0.5)
+
+  set recency-sf -5 / ln 0.5
   ask patches [ set surface? false ]
+  draw-sphere
 
-  if surface-shape = "Sphere"          [ draw-sphere ]
-  if surface-shape = "Cube"            [ draw-cube ]
-  if surface-shape = "Convex Shape"    [ draw-convex ]
-  if surface-shape = "Mickey Mouse"    [ draw-mickey ]
-  if surface-shape = "Hollow Cylinder" [ draw-cylinder ]
+  setup-consumer 0
+  setup-consumer 1
+  setup-consumer 2
 
-  if colored-surface?
-    [ ask patches with [ surface? ] [ set pcolor white ] ]
+  setup-provider 0
 
-  ask n-of number-of-turtles patches with [ is-border-patch? ]
-  [
-    sprout 1 [ set size 1 ]
-  ]
   reset-ticks
 end
 
-to go
-  ask turtles [
-    sfd 1
+to setup-consumer [t]
 
+   ask n-of 500 patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1
+      set color white
+      set shape "person"
+      set typeC t
+      set history []
+      set activity-level alea maxAlpha minAlpha
+    set temperature temperature0
   ]
+  ]
+
+end
+
+to setup-provider [x]
+  ask n-of nbg patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set typ x
+      set color green
+      set shape "person"
+      set up 7.5
+      set sigmap 1.0
+      set history []
+      ]
+  ]
+  set x x + 1
+  ask n-of nbo patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set typ x
+      set size 1
+      set color blue
+      set shape "person"
+      set up 2.5
+      set sigmap 2.0
+set history []
+    ]
+  ]
+  set x x + 1
+  ask n-of nbi patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set typ x
+      set size 1
+      set color yellow
+      set shape "person"
+set history []
+    ]
+  ]
+  set x x + 1
+  ask n-of nbb patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set typ x
+      set color red
+      set shape "person"
+      set up -5
+      set sigmap 2.0
+set history []
+    ]
+  ]
+
+end
+to go
+
+ ;; Reset UG sum for both groups of consumers.
+  set UG-CONSUMER-FIREIT 0
+  set UG-CONSUMER-FIREITWR 0
+  set UG-CONSUMER-FIREITCR 0
+  ;; Reset number of interaction for the current tick.
+  set NB-INTERACTION-FIREIT 0
+  set NB-INTERACTION-FIREITWR 0
+  set NB-INTERACTION-FIREITCR 0
+
+   update-turtles
+
+  ask consumers [
+    if random-float 1 <= activity-level [
+      get-nearby-providers
+      ifelse typeC = 0
+      [interact-provider-FIREIT "NA"
+        set NB-INTERACTION-FIREIT (NB-INTERACTION-FIREIT + 1)
+        ;show NB-INTERACTION-FIREIT
+      ][
+        ifelse typeC = 1[
+          interact-provider-FIREIT "WR"
+          set NB-INTERACTION-FIREITWR (NB-INTERACTION-FIREITWR + 1)
+        ][
+          interact-provider-FIREIT "CR"
+          set NB-INTERACTION-FIREITCR (NB-INTERACTION-FIREITCR + 1)
+        ]
+      ]
+    ]
+  ]
+  ask providers [
+    update-u
+    switch-profile
+  ]
+  if ticks = 200 [stop]
   tick
+
+
+end
+
+to add-agents
+  let type1 count consumers
+  let type2 count providers with [color = green]
+  let type3 count providers with [color = blue]
+  let type4 count providers with [color = yellow]
+  let type5 count providers with [color = red]
+
+  if type1 < 500 [ let tmp 500 - type1
+  ask n-of tmp patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1 set color white set shape "person"
+        set typeC 0
+        set history []
+        set activity-level alea maxAlpha minAlpha
+        set temperature temperature0
+   ]
+  ]
+  ]
+
+  if type2 < nbg [ let tmp nbg - type2
+  ask n-of tmp patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+        set size 1
+      set typ 0
+      set color green
+      set shape "person"
+      set up 7.5
+      set sigmap 1.0
+      ]
+  ]
+  ]
+
+  if type3 < nbo [ let tmp nbo - type3
+  ask n-of tmp patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+       set typ 1
+      set size 1
+      set color blue
+      set shape "person"
+      set up 2.5
+      set sigmap 2.0
+
+    ]
+  ]
+  ]
+
+  if type4 < nbi [ let tmp nbi - type4
+  ask n-of tmp patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set typ 2
+      set size 1
+      set color yellow
+      set shape "person"
+    ]
+  ]
+  ]
+
+
+  if type5 < nbb [ let tmp nbb - type5
+  ask n-of tmp patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [ set size 1
+      set size 1
+      set typ 3
+      set color red
+      set shape "person"
+      set up -5
+      set sigmap 2.0
+
+    ]
+  ]
+  ]
+
 end
 
 to trace
-  ask one-of turtles [ pen-down ]
+  ask turtles [ pen-down ]
+end
+
+to get-nearby-providers
+  let listnp []
+  ask providers [
+    if distance myself < r0 [
+      set listnp lput self listnp
+    ]
+  ]
+  set nearby-providers listnp
+end
+
+
+to-report alea [ #min #max ]  ; random float in given range
+  report #min + random-float (#max - #min)
+end
+
+
+to update-u
+  ;; TODO: Use an M parameter
+  ;; New up must be modified by a delta-mu chosen in the range [-M, +M]
+  if typ = 0 [
+    if random-float 1 < puc [
+      set up ((random-float 5) + 5)
+      if up > 10 [set up 10]
+      if up < 5 [set up 5] ] ]
+  if typ = 1 [
+    if random-float 1 < puc [
+      set up (random-float 5)
+      if up > 5 [set up 5]
+      if up < 0 [set up 0] ] ]
+  if typ = 3 [
+    if random-float 1 < puc [
+      set up ((random-float 10) * -1)
+      if up > 0 [set up 0]
+      if up < -10 [set up -10] ] ]
+end
+
+to-report perform
+  let res 0
+  ifelse typ = 2 [
+    set res (random-float (PL-GOOD - PL-BAD)) + PL-BAD
+  ]
+  [
+    set res random-normal up sigmap
+  ]
+  ;; Clamp value between min and max
+  if res > 10 [ set res 10 ]
+  if res < -10 [ set res -10 ]
+
+  report res
+end
+
+to switch-profile
+
+  if random-float 1 < pProfileSwitch [
+    let x random 4
+    while  [x = typ]  [set x random 4]
+   set color change-color x
+    if typ = 0 [
+      set up ((PL-GOOD + PL-PERFECT) / 2)
+    ]
+    if typ = 1 [
+      set up ((PL-OK + PL-GOOD) / 2)
+    ]
+    if typ = 3 [
+      set up ((PL-WORST + PL-OK) / 2)
+    ]
+  ]
+end
+
+to-report change-color [c]
+  if c = 0 [set color green]
+  if c = 1 [set color blue]
+  if c = 2 [set color yellow]
+  if c = 3 [set color red]
+  report color
+end
+to update-turtles
+  let n-providers random (pppc * total-providers)
+  let provider-list-type []
+  ask n-of n-providers providers [
+    set provider-list-type lput typ provider-list-type
+    die
+
+  ]
+
+  foreach provider-list-type [x -> create-providers 1 [setup-provider x]]
+
+  let n-consumers random (pCPC * 500)
+  let consumer-list-type []
+  ask n-of n-consumers consumers [
+    set consumer-list-type lput typeC consumer-list-type
+    die
+  ]
+  foreach consumer-list-type [x ->
+    ask n-of n-consumers patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1
+      set color white
+      set shape "person"
+      set typeC 0
+      ;set typeC FIREWR
+      set history []
+      set activity-level alea maxAlpha minAlpha
+    set temperature temperature0
+  ]
+  ]]
+  ask providers [
+    if random-float 1 < pPLC
+    [move]
+  ]
+  ask consumers [
+    if random-float 1 < pCLC
+    [move]
+  ]
+
+end
+
+to switch-location
+  ;; Change location of consumers and providers
+  ask providers [
+    if random-float 1 < pplc
+    [move]
+  ]
+  ask consumers [
+    if random-float 1 < pclc
+    [move]
+  ]
+end
+
+to move
+  let r sqrt((xcor ^ 2) + (ycor ^ 2) + (zcor ^ 2))
+  let phi (atan sqrt((xcor ^ 2) + (ycor ^ 2)) zcor)
+  let theta (atan ycor xcor)
+
+  let delta-phi (- dphi + (random-float (2 * dphi)))
+  let delta-theta (- dphi + (random-float (2 * dphi)))
+
+  set phi (phi + delta-phi)
+  set theta (theta + delta-theta)
+
+  set ycor r * (sin phi) * (sin theta)
+  set xcor r * (sin phi) * (cos theta)
+  set zcor r * (cos phi)
+end
+
+
+to interact-provider-FIREIT [selection]
+  if length nearby-providers > 0 [
+    let v-perform 0
+    let chosen-provider 0
+    let NoTrustValues []
+    let best-p 0
+    let best-p-trust -2
+     foreach nearby-providers [ p ->
+      let local-ratings (get-local-ratings p)
+      ifelse selection = "NA"[
+        ifelse length local-ratings = 0[
+          set NoTrustValues lput p NoTrustValues
+        ][
+          let p-trust (get-trust local-ratings [] []) ;**********************************$ à modifier
+          if p-trust > best-p-trust [
+            set best-p p
+            set best-p-trust p-trust
+          ]
+        ]
+      ][ifelse selection = "WR"[
+          ;; Get ratings of wtinesses
+          let wr-ratings (get-wr-ratings p )
+          ifelse (length local-ratings = 0) and (length wr-ratings = 0)[
+            set NoTrustValues lput p NoTrustValues
+          ][
+            let p-trust (get-trust local-ratings wr-ratings [])
+            if p-trust > best-p-trust [
+              set best-p p
+              set best-p-trust p-trust
+            ]
+          ]
+        ][
+          ;;get certification from provider
+          let certified-ratings (get-certified-ratings p )
+          ifelse (length local-ratings = 0) and (length certified-ratings = 0)[
+            set NoTrustValues lput p NoTrustValues
+          ][
+            let p-trust (get-trust local-ratings [] certified-ratings)
+            if p-trust > best-p-trust [
+              set best-p p
+              set best-p-trust p-trust
+            ]
+          ]
+        ]
+      ]
+    ]
+
+
+    ifelse best-p = 0 [
+      set chosen-provider (one-of NoTrustValues)
+    ][
+      ifelse length NoTrustValues = 0 [
+        set chosen-provider best-p
+      ][
+        ;; Otherwise choose between actions a1 and a2:
+        ;; a1: pick best provider
+        ;; a2: pick random provider in the NoTrustValues.
+        ;; P(ak) dependent on the current temperature.
+        ;show "Choose between a1 and a2"
+        let ER-a1 best-p-trust
+        let ER-a2 0
+        ifelse nb-interaction = 0 [ set ER-a2 0 ][ set ER-a2 (total-UG-observed / nb-interaction) ]
+        let exp-a1 (e ^ (ER-a1 / temperature))
+        let exp-a2 (e ^ (ER-a2 / temperature))
+        let q1 (exp-a1 / (exp-a1 + exp-a2))
+
+        ifelse random-float 1 < q1 [
+          set chosen-provider best-p
+        ][
+          set chosen-provider (one-of NoTrustValues)
+        ]
+      ]
+    ]
+
+    ask chosen-provider [ set v-perform perform ]
+    set nb-interaction (nb-interaction + 1)
+
+    let normalized-perform 2 * ((v-perform - PL-WORST) / (PL-PERFECT - PL-WORST)) - 1
+    set total-UG-observed (total-UG-observed + normalized-perform)
+
+    set history lput (list chosen-provider normalized-perform ticks) history
+    if length history > H [
+      set history but-first history
+    ]
+
+    ;; Update Temperature for future interactions
+    set temperature (temperature - 1)
+    if temperature < 1 [ set temperature 1 ]
+
+    ifelse selection = "NA"
+    [set UG-CONSUMER-FIREIT (UG-CONSUMER-FIREIT + v-perform)]
+    [
+      ifelse selection = "WR"[
+        set UG-CONSUMER-FIREITWR (UG-CONSUMER-FIREITWR + v-perform)
+      ][
+        set UG-CONSUMER-FIREITCR (UG-CONSUMER-FIREITCR + v-perform)
+      ]
+    ]
+
+  ]
+end
+
+to-report get-local-ratings [p]
+  let local-ratings []
+  foreach history [ r ->
+    if p = (item 0 r) [
+      set local-ratings lput r local-ratings
+    ]
+  ]
+  report local-ratings
+end
+
+to-report get-certified-ratings [p]
+  let return-value 0
+  ask p[
+    set return-value history
+  ]
+  report return-value
+end
+to-report get-trust [local-ratings wr-ratings certified-ratings]
+  let t-values-sum 0
+  let weight-sum 1
+
+  if length local-ratings > 0 [
+    let weights-I []
+    foreach local-ratings [ rating ->
+      let wI-r (e ^ ((ticks - (item 2 rating)) / recency-sf))
+      set weights-I lput wI-r weights-I
+    ]
+    let TI (TK local-ratings weights-I)
+    let uui (WI * rho local-ratings weights-I TI)
+    if uui != 0 [
+     set t-values-sum (t-values-sum + (TI * uui))
+     set weight-sum uui
+    ]
+  ]
+  if length wr-ratings > 0 [
+    let weights-WR []
+    foreach wr-ratings [ rating ->
+      let wR-r (e ^ ((ticks - (item 2 rating)) / recency-sf))
+      set weights-WR lput wR-r weights-WR
+    ]
+    let WR (TK wr-ratings weights-WR)
+    let uuw  (WW * rho wr-ratings weights-WR WR)
+    if uuw != 0 [
+     set t-values-sum (t-values-sum + (WR * uuw))
+     set weight-sum (weight-sum + uuw)
+    ]
+  ]
+
+  if length certified-ratings > 0 [
+    let weights-CR []
+    foreach certified-ratings [ rating ->
+      let wR-cr (e ^ ((ticks - (item 2 rating)) / recency-sf))
+      set weights-CR lput wR-cr weights-CR
+    ]
+    let CR (TK certified-ratings weights-CR)
+    let uuc  (WC * rho certified-ratings weights-CR CR)
+    if uuc != 0 [
+     set t-values-sum (t-values-sum + (CR * uuc))
+     set weight-sum (weight-sum + uuc)
+    ]
+  ]
+  report t-values-sum / weight-sum
+end
+
+to-report get-wr-ratings [p]
+  let wr-ratings []
+  let witnesses get-all-witnesses self [] p 0
+  foreach witnesses [ r ->
+    if p = (item 0 r) [
+      set wr-ratings lput r wr-ratings
+    ]
+  ]
+  report wr-ratings
+end
+
+to-report get-all-witnesses [me prev-cons prov currentDeph]
+  if currentDeph = WR_nRL [report []]
+  set currentDeph 1 + currentDeph
+  let closest-cons get-closet-consumers me prev-cons
+  let report-list []
+  foreach closest-cons [x ->
+    let rates ask-ratings turtle-set x prov
+    ifelse rates = 0
+    [ let tmp get-all-witnesses x prev-cons prov currentDeph
+      foreach tmp [y -> set report-list lput y report-list]
+    ][
+      let tmp rates
+      foreach tmp [y -> set report-list lput y report-list]
+    ]
+  ]
+  report report-list
+end
+
+
+to-report get-closet-consumers [me previous-consumers]
+  let lnc []
+  ask other consumers [
+    if distance me < r0 [
+      set lnc lput self lnc
+    ]
+  ]
+  ;;adding me ton previous consumers
+  set previous-consumers lput me previous-consumers
+  foreach previous-consumers [
+    x -> if member? x lnc [
+      set lnc remove x lnc
+    ]
+  ]
+  ;; finding the closest consumers (at most WR_nBF)
+  let closest-consumers []
+  let nbc 0
+  while [length lnc > 0 and nbc < WR_nBF] [
+    let tmpc min-one-of turtle-set lnc [distance me]
+    set closest-consumers lput tmpc closest-consumers
+    set lnc remove tmpc lnc
+    set nbc nbc + 1
+  ]
+  report closest-consumers
+end
+
+to-report ask-ratings [me p]
+
+  let matched []
+  ask me [
+    if length history > 0[
+
+    foreach history [x ->
+      if item 0 x = p [
+        ;;show "test"
+        set matched lput x matched
+        ]
+      ]
+    ]
+  ]
+  ifelse length matched > 0
+    [report matched]
+    [report 0]
+end
+to-report TK [ratings weights]
+  let i 0
+  let return-value 0
+  let weight-sum 0
+  while [ i != length ratings ][
+    let rating (item i ratings)
+    set return-value return-value + ((item 1 rating) * (item i weights))
+    set weight-sum weight-sum + (item i weights)
+    set i (i + 1)
+  ]
+  set return-value (return-value / weight-sum)
+  report return-value
+end
+
+to-report rho [ratings weights tr-value]
+  let weight-sum 0
+  let rho-DK 0
+  let i 0
+  ;; Compute rho-DI
+  while [ i != length ratings][
+    let rating (item i ratings)
+    set rho-DK (rho-DK + (item i weights * (abs (item 1 rating) - tr-value)))
+    set weight-sum (weight-sum + item i weights)
+    set i (i + 1)
+  ]
+  set rho-DK (1 - (1 / 2) * (rho-DK / weight-sum))
+  ;; Compute rho-RK
+  let rho-RK (1 - e ^ (- GAMMA-I * weight-sum))
+  ;; Return rho-K
+  report rho-DK * rho-RK
 end
 
 ;; ===========================================================================
@@ -41,12 +694,12 @@ end
 ;; ===========================================================================
 
 to sfd [ steps ] ;; turtle procedure
-  repeat ( 4 * steps ) [ seek-border ]
+  seek-border
 end
 
 to seek-border ;; turtle procedure
   face-closest-neighbor neighbors with [ surface? != [surface?] of myself ]
-  fd step-size
+  fd 1
   rt (random 30) - 10
   tilt-up (random 50) - 20
 end
@@ -96,6 +749,7 @@ to-report is-border-patch? ;; patch procedure
   report any? neighbors with [surface? != [surface?] of myself]
 end
 
+
 ;; ===========================================================================
 ;; =========================== Surface Drawing ===============================
 ;; ===========================================================================
@@ -104,45 +758,6 @@ to draw-sphere
   ask patches with [ distancexyz 0 0 0 < ( world-width * 0.9 / 2 ) ]
     [ set surface? true ]
 end
-
-
-to draw-cube
-  ask patches with [ abs( pxcor ) < ( world-width * .75 / 2 ) and
-                     abs( pycor ) < ( world-width * .75 / 2 ) and
-                     abs( pzcor ) < ( world-width * .75 / 2 ) ]
-    [ set surface? true ]
-end
-
-
-to draw-convex
-  draw-cube
-  ask patches with [ distancexyz 0 0 (     world-width / 2 )
-                       < ( world-width * .75 / 2 ) or
-                     distancexyz 0 0 ( 0 - world-width / 2 )
-                       < ( world-width * .75 / 2 ) ]
-    [ set surface? false ]
-end
-
-
-to draw-mickey
-  ask patches with [ distancexyz  0 ( 0 - world-width * .2 / 2 ) 0
-                       < ( world-width * .65 / 2 ) ]
-    [ set surface? true ]
-  ask patches with [ distancexyz  ( world-width * .55 / 2 ) ( world-width * .45 / 2 ) 0
-                       < ( world-width * .35 / 2 )  ]
-    [ set surface? true ]
-  ask patches with [ distancexyz  ( 0 - world-width * .55 / 2 ) ( world-width * .45 / 2 ) 0
-                       < ( world-width * .35 / 2 )  ]
-    [ set surface? true ]
-end
-
-
-to draw-cylinder
-  ask patches with [ distancexy 0 0 < ( world-width * 0.75 / 2 ) and
-                     distancexy 0 0 > ( world-width * 0.5  / 2 ) ]
-    [ set surface? true ]
-end
-
 
 ;; ===========================================================================
 ;; ====================== Trig for Angle Calculations ========================
@@ -189,8 +804,7 @@ to-report angle-between [ angle1 pitch1 angle2 pitch2 ]
 end
 
 
-; Copyright 2007 Uri Wilensky.
-; See Info tab for full copyright and license.
+; Copyright 2018 Sghaier and Trezzi.
 @#$#@#$#@
 GRAPHICS-WINDOW
 0
@@ -223,9 +837,9 @@ ticks
 
 BUTTON
 13
-229
-236
-262
+47
+148
+80
 NIL
 go
 T
@@ -239,10 +853,10 @@ NIL
 0
 
 BUTTON
-14
+12
+10
 149
-236
-182
+43
 NIL
 setup
 NIL
@@ -255,62 +869,11 @@ NIL
 NIL
 1
 
-CHOOSER
-14
-57
-236
-102
-surface-shape
-surface-shape
-"Sphere" "Cube" "Convex Shape" "Mickey Mouse" "Hollow Cylinder"
-0
-
-SWITCH
-13
-109
-236
-142
-colored-surface?
-colored-surface?
-1
-1
--1000
-
-SLIDER
-14
-189
-236
-222
-step-size
-step-size
-0.1
-1
-0.1
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-14
-17
-236
-50
-number-of-turtles
-number-of-turtles
-1
-600
-600.0
-1
-1
-turtles
-HORIZONTAL
-
 BUTTON
 13
-269
-236
-302
+87
+149
+120
 NIL
 trace
 NIL
@@ -322,6 +885,242 @@ NIL
 NIL
 NIL
 0
+
+MONITOR
+251
+16
+337
+61
+total agents
+count turtles
+17
+1
+11
+
+INPUTBOX
+480
+20
+550
+80
+nbg
+10.0
+1
+0
+Number
+
+INPUTBOX
+479
+84
+554
+144
+nbo
+40.0
+1
+0
+Number
+
+INPUTBOX
+479
+149
+556
+209
+nbi
+5.0
+1
+0
+Number
+
+INPUTBOX
+478
+212
+554
+272
+nbb
+45.0
+1
+0
+Number
+
+SLIDER
+26
+168
+198
+201
+puc
+puc
+0
+1
+0.0
+0.2
+1
+NIL
+HORIZONTAL
+
+SLIDER
+27
+207
+199
+240
+pprofileswitch
+pprofileswitch
+0
+1
+0.3
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+27
+246
+199
+279
+pplc
+pplc
+0
+1
+0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+26
+282
+198
+315
+pclc
+pclc
+0
+1
+0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+27
+321
+199
+354
+dphi
+dphi
+0
+1
+0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+29
+366
+201
+399
+r0
+r0
+0
+100
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+19
+413
+191
+446
+WR_nRL
+WR_nRL
+0
+10
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+21
+451
+193
+484
+WR_nBF
+WR_nBF
+0
+10
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+612
+51
+1235
+446
+UG
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"UG" 1.0 0 -16777216 true "" "plot (UG-CONSUMER-FIREIT / NB-INTERACTION-FIREIT)"
+"pen-1" 1.0 0 -7500403 true "" "plot (UG-CONSUMER-FIREITWR / NB-INTERACTION-FIREITWR)"
+"pen-2" 1.0 0 -2674135 true "" "plot (UG-CONSUMER-FIREITCR / NB-INTERACTION-FIREITCR)"
+
+SLIDER
+220
+181
+392
+214
+pppc
+pppc
+0
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+221
+218
+393
+251
+pcpc
+pcpc
+0
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+253
+67
+374
+112
+NIL
+count consumers
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
