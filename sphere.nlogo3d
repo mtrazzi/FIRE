@@ -1,510 +1,228 @@
-<<<<<<< HEAD
-patches-own [ surface? ]
 globals [
-   H             ; rating length
-  PL-PERFECT
-  PL-GOOD
-  PL-OK
-  PL-BAD
-  PL-WORST
-  total-providers
 
-  maxAlpha
-  minAlpha
+  nb-providers
+  recency-scaling
+  gamma
+  H
+  UGIT
+  UGWR
+  UGCR
+  interaction-it
+  interaction-wr
+  interaction-cr
 
-  recency-sf ;; IT recency scaling factor
-  GAMMA-I
-
-  UG-CONSUMER-FIREIT
-  UG-CONSUMER-FIREITCR
-  UG-CONSUMER-FIREITWR
-  NB-INTERACTION-FIREIT
-  NB-INTERACTION-FIREITWR
-  NB-INTERACTION-FIREITCR
-  total
-  temperature0
-  WI WW WC
-
-
+  WI WW WC ;; Weigth of the selection methods
+  PL-PERFECT PL-GOOD PL-OK PL-BAD PL-WORST ;; Bounds on provider performance.
+  max-alpha
+  min-alpha
 ]
-breed [ providers provider ]
-breed [ consumers consumer ]
 
-providers-own [
-  typ     ; type of provider [good, bad, intermitent, ordinary]
-  up      ; mean level of performance
-  sigmap               ; std
-  history
-]
+breed [consumers consumer]
+breed [providers provider]
+
 consumers-own [
-  alpha ;activity level
-  typeC
+  typ
   nearby-providers
   history
   activity-level
   temperature
   total-UG-observed
   nb-interaction
-=======
-extensions [array]
+]
 
-patches-own [ surface? ]
-globals [recency-sf ]
-breed [ providers provider ]
-breed [ consumers consumer ]
-turtles-own [
-  v             ;rating database for term c
-  ed            ; default level of influence of the rule
-  wr            ; weight of rating
-  rul           ; roles database
-  deltaTime     ;time difference between current time and time when rating is recorded
+providers-own [
+  history
+  typ
+  mu-p
+  sigma-p
 ]
-providers-own [up      ; mean level of performance
-  sigmap               ; std
-  perform              ; performance of providers
-]
-consumers-own [alpha ;activity level
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-]
-;; ===========================================================================
-;; ============================= setup and go Procedures =============================
-;; ===========================================================================
 
+;; ----------------------------------
+;; MAIN PROCEDURES
+;; ----------------------------------
 to setup
   clear-all
-<<<<<<< HEAD
-  set H 10
-  set maxAlpha 1
-  set minAlpha 0.25
+  set WI 2
+  set WW 1
+  set WC 0.5
 
   set PL-PERFECT 10
   set PL-GOOD 5
   set PL-OK 0
   set PL-BAD -5
   set PL-WORST -10
-  set total-providers (nbg + nbo + nbi + nbb)
-  set temperature0 10
-  set WI 2.0
-  set WW 1.0
-  set WC 0.5
-  set GAMMA-I (- ln 0.5)
+  set nb-providers (nbg + nbo + nbi + nbb)
 
-  set recency-sf -5 / ln 0.5
-  ask patches [ set surface? false ]
-  draw-sphere
+  set recency-scaling (- (5 / ln 0.5))
+  set gamma (- ln 0.5)
 
-  setup-consumer 0
-  setup-consumer 1
-  setup-consumer 2
-
-  setup-provider 0
-
+  set max-alpha 1
+  set min-alpha 0.25
+  set H 10
+  create-consumers 500 [ setup-consumer 0 ]
+  create-consumers 500 [ setup-consumer 1 ]
+  create-consumers 500 [ setup-consumer 2 ]
+  create-providers nbg [ setup-provider 0 ]
+  create-providers nbo [ setup-provider 1 ]
+  create-providers nbi [ setup-provider 2 ]
+  create-providers nbb [ setup-provider 3 ]
   reset-ticks
 end
+
+
+to set-position
+  tilt-up asin (1.0 - random-float 2.0)
+  jump max-pxcor
+end
+
 
 to setup-consumer [t]
-
-=======
-  set recency-sf -5 / ln 0.5
-  ask patches [ set surface? false ]
-  draw-sphere
-  ask n-of 10 patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [ set size 1
-      set color green
-      set shape "person"
-      set up 7.5
-      set sigmap 1.0
-      set perform random-normal up sigmap]
-  ]
-  ask n-of 40 patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set size 1
-      set color blue
-      set shape "person"
-      set up 2.5
-      set sigmap 2.0
-      set perform random-normal up sigmap
-    ]
-  ]
-  ask n-of 5 patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set size 1
-      set color yellow
-      set shape "person"
-      set perform (random-float -5) + 5
-    ]
-  ]
-  ask n-of 45 patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [ set size 1
-      set color red
-      set shape "person"
-      set up -5
-      set sigmap 2.0
-      set perform random-normal up sigmap
-    ]
-  ]
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-   ask n-of 500 patches with [ is-border-patch? ]
-  [
-    sprout-consumers 1 [ set size 1
-      set color white
-      set shape "person"
-<<<<<<< HEAD
-      set typeC t
-      set history []
-      set activity-level alea maxAlpha minAlpha
-    set temperature temperature0
-  ]
-  ]
-
-=======
-      set alpha alea 0.25 1]
-  ]
-
-  reset-ticks
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
+  set shape "person"
+  set typ t
+  set color white
+  set history []
+  set-position
+  set activity-level alea max-alpha min-alpha
+  set temperature 100
 end
 
-to setup-provider [x]
-  ask n-of nbg patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set size 1
-      set typ x
-      set color green
-      set shape "person"
-      set up 7.5
-      set sigmap 1.0
-      set history []
-      ]
-  ]
-  set x x + 1
-  ask n-of nbo patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set typ x
-      set size 1
-      set color blue
-      set shape "person"
-      set up 2.5
-      set sigmap 2.0
-set history []
-    ]
-  ]
-  set x x + 1
-  ask n-of nbi patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set typ x
-      set size 1
-      set color yellow
-      set shape "person"
-set history []
-    ]
-  ]
-  set x x + 1
-  ask n-of nbb patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set size 1
-      set typ x
-      set color red
-      set shape "person"
-      set up -5
-      set sigmap 2.0
-set history []
-    ]
-  ]
+;; setup-provider
+;;
 
+to setup-provider [x] ;; provider type
+  set shape "person"
+  set color red + (x * 10)
+  set typ x
+  set-position
+  set history []
+  if typ = 0 [
+    set mu-p ((PL-GOOD + PL-PERFECT) / 2)
+    set sigma-p 1
+  ]
+  if typ = 1 [
+    set mu-p ((PL-GOOD + PL-OK) / 2)
+    set sigma-p 2
+  ]
+  if typ = 3 [
+    set mu-p ((PL-OK + PL-WORST) / 2)
+    set sigma-p 2
+  ]
 end
+
+
 to go
-<<<<<<< HEAD
 
- ;; Reset UG sum for both groups of consumers.
-  set UG-CONSUMER-FIREIT 0
-  set UG-CONSUMER-FIREITWR 0
-  set UG-CONSUMER-FIREITCR 0
-  ;; Reset number of interaction for the current tick.
-  set NB-INTERACTION-FIREIT 0
-  set NB-INTERACTION-FIREITWR 0
-  set NB-INTERACTION-FIREITCR 0
+  set UGIT 0
+  set UGWR 0
+  set UGCR 0
 
-   update-turtles
+  set interaction-it 0
+  set interaction-wr 0
+  set interaction-cr 0
 
   ask consumers [
+
     if random-float 1 <= activity-level [
       get-nearby-providers
-      ifelse typeC = 0
+      ifelse typ = 0
       [interact-provider-FIREIT "NA"
-        set NB-INTERACTION-FIREIT (NB-INTERACTION-FIREIT + 1)
-        ;show NB-INTERACTION-FIREIT
+        set interaction-it (interaction-it + 1)
       ][
-        ifelse typeC = 1[
+        ifelse typ = 1 [
           interact-provider-FIREIT "WR"
-          set NB-INTERACTION-FIREITWR (NB-INTERACTION-FIREITWR + 1)
+          set interaction-wr (interaction-wr + 1)
         ][
           interact-provider-FIREIT "CR"
-          set NB-INTERACTION-FIREITCR (NB-INTERACTION-FIREITCR + 1)
+          set interaction-cr (interaction-cr + 1)
         ]
       ]
     ]
   ]
-  ask providers [
-    update-u
-    switch-profile
-  ]
-  if ticks = 200 [stop]
-=======
-  ask turtles [
-    sfd 1
-  ]
-  ask n-of 10 consumers [die]
-  add-consumers
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
   tick
-
-
+  if ticks = 200 [stop]
 end
 
-to add-agents
-  let type1 count consumers
-  let type2 count providers with [color = green]
-  let type3 count providers with [color = blue]
-  let type4 count providers with [color = yellow]
-  let type5 count providers with [color = red]
+;; get-nearby-providers
+;;
 
-  if type1 < 500 [ let tmp 500 - type1
-  ask n-of tmp patches with [ is-border-patch? ]
-  [
-    sprout-consumers 1 [ set size 1 set color white set shape "person"
-        set typeC 0
-        set history []
-        set activity-level alea maxAlpha minAlpha
-        set temperature temperature0
-   ]
-  ]
-  ]
-
-  if type2 < nbg [ let tmp nbg - type2
-  ask n-of tmp patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-        set size 1
-      set typ 0
-      set color green
-      set shape "person"
-      set up 7.5
-      set sigmap 1.0
-      ]
-  ]
-  ]
-
-  if type3 < nbo [ let tmp nbo - type3
-  ask n-of tmp patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-       set typ 1
-      set size 1
-      set color blue
-      set shape "person"
-      set up 2.5
-      set sigmap 2.0
-
-    ]
-  ]
-  ]
-
-  if type4 < nbi [ let tmp nbi - type4
-  ask n-of tmp patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [
-      set typ 2
-      set size 1
-      set color yellow
-      set shape "person"
-    ]
-  ]
-  ]
-
-
-  if type5 < nbb [ let tmp nbb - type5
-  ask n-of tmp patches with [ is-border-patch? ]
-  [
-    sprout-providers 1 [ set size 1
-      set size 1
-      set typ 3
-      set color red
-      set shape "person"
-      set up -5
-      set sigmap 2.0
-
-    ]
-  ]
-  ]
-
-end
-
-to add-consumers
-  ask n-of 10 patches with [ is-border-patch? ]
-  [
-    sprout-consumers 1 [ set size 1 set color white set shape "person"]
-  ]
-end
-
-to trace
-  ask turtles [ pen-down ]
-end
-
-<<<<<<< HEAD
 to get-nearby-providers
-  let listnp []
+  let liste-near []
   ask providers [
     if distance myself < r0 [
-      set listnp lput self listnp
+      set liste-near lput self liste-near
     ]
   ]
-  set nearby-providers listnp
+  set nearby-providers liste-near
 end
 
+;; get-all-witnesses
+;;
 
-to-report alea [ #min #max ]  ; random float in given range
-  report #min + random-float (#max - #min)
-end
+to-report get-all-witnesses [me prev-cons prov currentDeph]
+  if currentDeph = _nRL [report []]
+  set currentDeph 1 + currentDeph
+  set prev-cons lput self prev-cons
+  let closest-cons get-closet-consumers me prev-cons
+  let res []
 
+  foreach closest-cons [x ->
 
-to update-u
-  ;; TODO: Use an M parameter
-  ;; New up must be modified by a delta-mu chosen in the range [-M, +M]
-  if typ = 0 [
-    if random-float 1 < puc [
-      set up ((random-float 5) + 5)
-      if up > 10 [set up 10]
-      if up < 5 [set up 5] ] ]
-  if typ = 1 [
-    if random-float 1 < puc [
-      set up (random-float 5)
-      if up > 5 [set up 5]
-      if up < 0 [set up 0] ] ]
-  if typ = 3 [
-    if random-float 1 < puc [
-      set up ((random-float 10) * -1)
-      if up > 0 [set up 0]
-      if up < -10 [set up -10] ] ]
-end
-
-to-report perform
-  let res 0
-  ifelse typ = 2 [
-    set res (random-float (PL-GOOD - PL-BAD)) + PL-BAD
+    let rates ask-ratings turtle-set x prov
+    ifelse rates = 0
+    [ let tmp get-all-witnesses x prev-cons prov currentDeph
+      foreach tmp [y -> set res lput y res]
+    ][
+      let tmp rates
+      foreach tmp [y -> set res lput y res]
+    ]
   ]
-  [
-    set res random-normal up sigmap
-  ]
-  ;; Clamp value between min and max
-  if res > 10 [ set res 10 ]
-  if res < -10 [ set res -10 ]
-
   report res
 end
 
-to switch-profile
+;; get-closest-consumers
 
-  if random-float 1 < pProfileSwitch [
-    let x random 4
-    while  [x = typ]  [set x random 4]
-   set color change-color x
-    if typ = 0 [
-      set up ((PL-GOOD + PL-PERFECT) / 2)
-    ]
-    if typ = 1 [
-      set up ((PL-OK + PL-GOOD) / 2)
-    ]
-    if typ = 3 [
-      set up ((PL-WORST + PL-OK) / 2)
+to-report get-closet-consumers [me previous-consumers]
+  let listec []
+  ask other consumers [
+    if distance me < r0 [
+      set listec lput self listec
     ]
   ]
+  set previous-consumers lput me previous-consumers
+  foreach previous-consumers [
+    x -> if member? x listec [
+      set listec remove x listec
+    ]
+  ]
+  let closest-consumers []
+  let nbc 0
+  while [length listec > 0 and nbc < _nBF] [
+    let tmpc min-one-of turtle-set listec [distance me]
+    set closest-consumers lput tmpc closest-consumers
+    set listec remove tmpc listec
+    set nbc nbc + 1
+  ]
+
+  report closest-consumers
 end
 
-to-report change-color [c]
-  if c = 0 [set color green]
-  if c = 1 [set color blue]
-  if c = 2 [set color yellow]
-  if c = 3 [set color red]
-  report color
+to-report ask-ratings [me provid]
+  let matched []
+  ask me [
+    if length history > 0[
+
+    ]
+
+    foreach history [x ->
+      if item 0 x = provid [
+        set matched lput x matched
+      ]
+    ]
+  ]
+  ifelse length matched > 0
+    [report matched]
+    [report 0]
 end
-to update-turtles
-  let n-providers random (pppc * total-providers)
-  let provider-list-type []
-  ask n-of n-providers providers [
-    set provider-list-type lput typ provider-list-type
-    die
-
-  ]
-
-  foreach provider-list-type [x -> create-providers 1 [setup-provider x]]
-
-  let n-consumers random (pCPC * 500)
-  let consumer-list-type []
-  ask n-of n-consumers consumers [
-    set consumer-list-type lput typeC consumer-list-type
-    die
-  ]
-  foreach consumer-list-type [x ->
-    ask n-of n-consumers patches with [ is-border-patch? ]
-  [
-    sprout-consumers 1 [ set size 1
-      set color white
-      set shape "person"
-      set typeC 0
-      ;set typeC FIREWR
-      set history []
-      set activity-level alea maxAlpha minAlpha
-    set temperature temperature0
-  ]
-  ]]
-  ask providers [
-    if random-float 1 < pPLC
-    [move]
-  ]
-  ask consumers [
-    if random-float 1 < pCLC
-    [move]
-  ]
-
-end
-
-to switch-location
-  ;; Change location of consumers and providers
-  ask providers [
-    if random-float 1 < pplc
-    [move]
-  ]
-  ask consumers [
-    if random-float 1 < pclc
-    [move]
-  ]
-end
-
-to move
-  let r sqrt((xcor ^ 2) + (ycor ^ 2) + (zcor ^ 2))
-  let phi (atan sqrt((xcor ^ 2) + (ycor ^ 2)) zcor)
-  let theta (atan ycor xcor)
-
-  let delta-phi (- dphi + (random-float (2 * dphi)))
-  let delta-theta (- dphi + (random-float (2 * dphi)))
-
-  set phi (phi + delta-phi)
-  set theta (theta + delta-theta)
-
-  set ycor r * (sin phi) * (sin theta)
-  set xcor r * (sin phi) * (cos theta)
-  set zcor r * (cos phi)
-end
-
 
 to interact-provider-FIREIT [selection]
   if length nearby-providers > 0 [
@@ -513,37 +231,36 @@ to interact-provider-FIREIT [selection]
     let NoTrustValues []
     let best-p 0
     let best-p-trust -2
-     foreach nearby-providers [ p ->
+    foreach nearby-providers [ p ->
+
       let local-ratings (get-local-ratings p)
       ifelse selection = "NA"[
         ifelse length local-ratings = 0[
           set NoTrustValues lput p NoTrustValues
         ][
-          let p-trust (get-trust local-ratings [] []) ;**********************************$ à modifier
+          let p-trust (calcul-trust local-ratings [] [])
           if p-trust > best-p-trust [
             set best-p p
             set best-p-trust p-trust
           ]
         ]
       ][ifelse selection = "WR"[
-          ;; Get ratings of wtinesses
           let wr-ratings (get-wr-ratings p )
           ifelse (length local-ratings = 0) and (length wr-ratings = 0)[
             set NoTrustValues lput p NoTrustValues
           ][
-            let p-trust (get-trust local-ratings wr-ratings [])
+            let p-trust (calcul-trust local-ratings wr-ratings [])
             if p-trust > best-p-trust [
               set best-p p
               set best-p-trust p-trust
             ]
           ]
         ][
-          ;;get certification from provider
           let certified-ratings (get-certified-ratings p )
           ifelse (length local-ratings = 0) and (length certified-ratings = 0)[
             set NoTrustValues lput p NoTrustValues
           ][
-            let p-trust (get-trust local-ratings [] certified-ratings)
+            let p-trust (calcul-trust local-ratings [] certified-ratings)
             if p-trust > best-p-trust [
               set best-p p
               set best-p-trust p-trust
@@ -552,19 +269,13 @@ to interact-provider-FIREIT [selection]
         ]
       ]
     ]
-
-
     ifelse best-p = 0 [
+
       set chosen-provider (one-of NoTrustValues)
     ][
       ifelse length NoTrustValues = 0 [
         set chosen-provider best-p
       ][
-        ;; Otherwise choose between actions a1 and a2:
-        ;; a1: pick best provider
-        ;; a2: pick random provider in the NoTrustValues.
-        ;; P(ak) dependent on the current temperature.
-        ;show "Choose between a1 and a2"
         let ER-a1 best-p-trust
         let ER-a2 0
         ifelse nb-interaction = 0 [ set ER-a2 0 ][ set ER-a2 (total-UG-observed / nb-interaction) ]
@@ -573,8 +284,10 @@ to interact-provider-FIREIT [selection]
         let q1 (exp-a1 / (exp-a1 + exp-a2))
 
         ifelse random-float 1 < q1 [
+
           set chosen-provider best-p
         ][
+
           set chosen-provider (one-of NoTrustValues)
         ]
       ]
@@ -591,161 +304,20 @@ to interact-provider-FIREIT [selection]
       set history but-first history
     ]
 
-    ;; Update Temperature for future interactions
     set temperature (temperature - 1)
     if temperature < 1 [ set temperature 1 ]
-
     ifelse selection = "NA"
-    [set UG-CONSUMER-FIREIT (UG-CONSUMER-FIREIT + v-perform)]
+    [set UGIT (UGIT + v-perform)]
     [
       ifelse selection = "WR"[
-        set UG-CONSUMER-FIREITWR (UG-CONSUMER-FIREITWR + v-perform)
+        set UGWR (UGWR + v-perform)
       ][
-        set UG-CONSUMER-FIREITCR (UG-CONSUMER-FIREITCR + v-perform)
-      ]
-    ]
-
-  ]
-end
-
-to-report get-local-ratings [p]
-  let local-ratings []
-  foreach history [ r ->
-    if p = (item 0 r) [
-      set local-ratings lput r local-ratings
-    ]
-  ]
-  report local-ratings
-end
-
-to-report get-certified-ratings [p]
-  let return-value 0
-  ask p[
-    set return-value history
-  ]
-  report return-value
-end
-to-report get-trust [local-ratings wr-ratings certified-ratings]
-  let t-values-sum 0
-  let weight-sum 1
-
-  if length local-ratings > 0 [
-    let weights-I []
-    foreach local-ratings [ rating ->
-      let wI-r (e ^ ((ticks - (item 2 rating)) / recency-sf))
-      set weights-I lput wI-r weights-I
-    ]
-    let TI (TK local-ratings weights-I)
-    let uui (WI * rho local-ratings weights-I TI)
-    if uui != 0 [
-     set t-values-sum (t-values-sum + (TI * uui))
-     set weight-sum uui
-    ]
-  ]
-  if length wr-ratings > 0 [
-    let weights-WR []
-    foreach wr-ratings [ rating ->
-      let wR-r (e ^ ((ticks - (item 2 rating)) / recency-sf))
-      set weights-WR lput wR-r weights-WR
-    ]
-    let WR (TK wr-ratings weights-WR)
-    let uuw  (WW * rho wr-ratings weights-WR WR)
-    if uuw != 0 [
-     set t-values-sum (t-values-sum + (WR * uuw))
-     set weight-sum (weight-sum + uuw)
-    ]
-  ]
-
-  if length certified-ratings > 0 [
-    let weights-CR []
-    foreach certified-ratings [ rating ->
-      let wR-cr (e ^ ((ticks - (item 2 rating)) / recency-sf))
-      set weights-CR lput wR-cr weights-CR
-    ]
-    let CR (TK certified-ratings weights-CR)
-    let uuc  (WC * rho certified-ratings weights-CR CR)
-    if uuc != 0 [
-     set t-values-sum (t-values-sum + (CR * uuc))
-     set weight-sum (weight-sum + uuc)
-    ]
-  ]
-  report t-values-sum / weight-sum
-end
-
-to-report get-wr-ratings [p]
-  let wr-ratings []
-  let witnesses get-all-witnesses self [] p 0
-  foreach witnesses [ r ->
-    if p = (item 0 r) [
-      set wr-ratings lput r wr-ratings
-    ]
-  ]
-  report wr-ratings
-end
-
-to-report get-all-witnesses [me prev-cons prov currentDeph]
-  if currentDeph = WR_nRL [report []]
-  set currentDeph 1 + currentDeph
-  let closest-cons get-closet-consumers me prev-cons
-  let report-list []
-  foreach closest-cons [x ->
-    let rates ask-ratings turtle-set x prov
-    ifelse rates = 0
-    [ let tmp get-all-witnesses x prev-cons prov currentDeph
-      foreach tmp [y -> set report-list lput y report-list]
-    ][
-      let tmp rates
-      foreach tmp [y -> set report-list lput y report-list]
-    ]
-  ]
-  report report-list
-end
-
-
-to-report get-closet-consumers [me previous-consumers]
-  let lnc []
-  ask other consumers [
-    if distance me < r0 [
-      set lnc lput self lnc
-    ]
-  ]
-  ;;adding me ton previous consumers
-  set previous-consumers lput me previous-consumers
-  foreach previous-consumers [
-    x -> if member? x lnc [
-      set lnc remove x lnc
-    ]
-  ]
-  ;; finding the closest consumers (at most WR_nBF)
-  let closest-consumers []
-  let nbc 0
-  while [length lnc > 0 and nbc < WR_nBF] [
-    let tmpc min-one-of turtle-set lnc [distance me]
-    set closest-consumers lput tmpc closest-consumers
-    set lnc remove tmpc lnc
-    set nbc nbc + 1
-  ]
-  report closest-consumers
-end
-
-to-report ask-ratings [me p]
-
-  let matched []
-  ask me [
-    if length history > 0[
-
-    foreach history [x ->
-      if item 0 x = p [
-        ;;show "test"
-        set matched lput x matched
-        ]
+        set UGCR (UGCR + v-perform)
       ]
     ]
   ]
-  ifelse length matched > 0
-    [report matched]
-    [report 0]
 end
+
 to-report TK [ratings weights]
   let i 0
   let return-value 0
@@ -760,11 +332,11 @@ to-report TK [ratings weights]
   report return-value
 end
 
-to-report rho [ratings weights tr-value]
+to-report rho-K [ratings weights tr-value]
   let weight-sum 0
   let rho-DK 0
   let i 0
-  ;; Compute rho-DI
+
   while [ i != length ratings][
     let rating (item i ratings)
     set rho-DK (rho-DK + (item i weights * (abs (item 1 rating) - tr-value)))
@@ -772,145 +344,142 @@ to-report rho [ratings weights tr-value]
     set i (i + 1)
   ]
   set rho-DK (1 - (1 / 2) * (rho-DK / weight-sum))
-  ;; Compute rho-RK
-  let rho-RK (1 - e ^ (- GAMMA-I * weight-sum))
-  ;; Return rho-K
+
+  let rho-RK (1 - e ^ (- gamma * weight-sum))
+
   report rho-DK * rho-RK
-=======
-to interaction-trust
-
-
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 end
 
-;; ===========================================================================
-;; =========================== Surface Walking ===============================
-;; ===========================================================================
+to-report get-it-trust [local-ratings]
 
-to sfd [ steps ] ;; turtle procedure
-  seek-border
-end
-
-to seek-border ;; turtle procedure
-  face-closest-neighbor neighbors with [ surface? != [surface?] of myself ]
-  fd 1
-  rt (random 30) - 10
-  tilt-up (random 50) - 20
-end
-
-;; how much turtle faces calling patch
-to-report pitch-if-facing-caller [ the-patch ] ;; turtle procedure
-  report ( towards-pitch the-patch + 180 ) mod 360
-end
-
-to-report facing-nearest [ the-turtle ] ;; patch procedure
-  let difference 0
-  let heading-toward [heading] of the-turtle
-
-  let pitch-toward (towards-pitch the-turtle - 180 ) mod 360
-  if not (pxcor = [xcor] of the-turtle and pycor = [ycor] of the-turtle)
-    [ set heading-toward (towards the-turtle - 180 ) mod 360 ]
-
-  set difference angle-between [heading] of the-turtle [pitch] of the-turtle heading-toward pitch-toward
-
-  report min list difference (360 - difference)
-end
-
-to face-closest-neighbor [ neighbor-subset ] ;; turtle procedure
-  let closest-border-patch min-one-of neighbor-subset [ facing-nearest myself ]
-
-  ifelse abs( towards-pitch closest-border-patch - pitch ) <= 180
-  [
-    set pitch ( towards-pitch closest-border-patch + pitch ) / 2
+  let weights-I []
+  foreach local-ratings [ rating ->
+    let wI-r (e ^ ((ticks - (item 2 rating)) / recency-scaling))
+    set weights-I lput wI-r weights-I
   ]
-  [
-    set pitch ( towards-pitch closest-border-patch - 360 + pitch ) / 2
-  ]
+  let TI (TK local-ratings weights-I)
 
-  if [pxcor] of closest-border-patch != xcor and [pycor] of closest-border-patch != ycor
-  [
-    ifelse abs( towards closest-border-patch - heading ) <= 180
-    [
-      set heading ( towards closest-border-patch + heading ) / 2
+  report TI
+end
+
+to-report calcul-trust [local-ratings wr-ratings certified-ratings]
+  let t-values-sum 0
+  let weight-sum 1
+
+  if length local-ratings > 0 [
+    let weights-I []
+    foreach local-ratings [ rating ->
+      let wI-r (e ^ ((ticks - (item 2 rating)) / recency-scaling))
+      set weights-I lput wI-r weights-I
     ]
-    [
-      set heading ( towards closest-border-patch - 360 + heading ) / 2
+    let TI (TK local-ratings weights-I)
+    let uui (WI * rho-K local-ratings weights-I TI)
+    if uui != 0 [
+     set t-values-sum (t-values-sum + (TI * uui))
+     set weight-sum uui
     ]
   ]
+  if length wr-ratings > 0 [
+    let weights-WR []
+    foreach wr-ratings [ rating ->
+      let wR-r (e ^ ((ticks - (item 2 rating)) / recency-scaling))
+      set weights-WR lput wR-r weights-WR
+    ]
+    let WR (TK wr-ratings weights-WR)
+    let uuw  (WW * rho-K wr-ratings weights-WR WR)
+    if uuw != 0 [
+     set t-values-sum (t-values-sum + (WR * uuw))
+     set weight-sum (weight-sum + uuw)
+    ]
+  ]
+
+  if length certified-ratings > 0 [
+    let weights-CR []
+    foreach certified-ratings [ rating ->
+      let wR-cr (e ^ ((ticks - (item 2 rating)) / recency-scaling))
+      set weights-CR lput wR-cr weights-CR
+    ]
+    let CR (TK certified-ratings weights-CR)
+    let uuc  (WC * rho-K certified-ratings weights-CR CR)
+    if uuc != 0 [
+     set t-values-sum (t-values-sum + (CR * uuc))
+     set weight-sum (weight-sum + uuc)
+    ]
+  ]
+  report t-values-sum / weight-sum
 end
 
-to-report is-border-patch? ;; patch procedure
-  report any? neighbors with [surface? != [surface?] of myself]
+to-report get-local-ratings [p]
+  let local-ratings []
+  foreach history [ r ->
+    if p = (item 0 r) [
+      set local-ratings lput r local-ratings
+    ]
+  ]
+  report local-ratings
 end
 
-
-;; ===========================================================================
-;; =========================== Surface Drawing ===============================
-;; ===========================================================================
-
-to draw-sphere
-  ask patches with [ distancexyz 0 0 0 < ( world-width * 0.9 / 2 ) ]
-    [ set surface? true ]
+to-report get-wr-ratings [p]
+  let wr-ratings []
+  let witnesses get-all-witnesses self [] p 0
+  foreach witnesses [ r ->
+    if p = (item 0 r) [
+      set wr-ratings lput r wr-ratings
+    ]
+  ]
+  report wr-ratings
 end
 
-;; ===========================================================================
-;; ====================== Trig for Angle Calculations ========================
-;; ===========================================================================
-
-to-report xvel [ angle tilt ]
-  report sin( angle ) * abs( cos( tilt ) )
+to-report get-certified-ratings [p]
+  let return-value 0
+  ask p[
+    set return-value history
+  ]
+  report return-value
 end
 
-to-report yvel [ angle tilt ]
-  report cos( angle ) * abs( cos( tilt ) )
-end
-
-to-report zvel [ tilt ]
-  report sin tilt
-end
-
-to-report dot-product [ angle1 pitch1 angle2 pitch2 ]
-  let x1 ( xvel angle1 pitch1 )
-  let y1 ( yvel angle1 pitch1 )
-  let z1 ( zvel pitch1 )
-
-  let x2 ( xvel angle2 pitch2 )
-  let y2 ( yvel angle2 pitch2 )
-  let z2 ( zvel pitch2 )
-
-  ;; to take care of slightly-over or slightly-under dot products
-  ;; these break the acos used in "angle-between"
-  report min ( list 1 ( max ( list -1 ( ( x1 * x2 ) + ( y1 * y2 ) + ( z1 * z2 ) ) ) ) )
-end
-
-
-to-report angle-between [ angle1 pitch1 angle2 pitch2 ]
-  ifelse angle1 = angle2
-  [
-    report min( list abs( pitch1 - pitch2 ) abs( 360 - ( pitch1 - pitch2 ) ) )
+to-report perform
+  let return-value 0
+  ifelse typ = 2 [
+    set return-value (random-float (PL-GOOD - PL-BAD)) + PL-BAD
   ][
-  ifelse pitch1 = pitch2
-  [
-    report min( list abs( angle1 - angle2 ) abs( 360 - ( angle1 - angle2 ) ) )
+    set return-value random-normal mu-p sigma-p
+  ]
+  if return-value > 10 [ set return-value 10 ]
+  if return-value < -10 [ set return-value -10 ]
+  let normalized-perform 2 * ((return-value - PL-WORST) / (PL-PERFECT - PL-WORST)) - 1
+  ifelse length history < H [
+    set history lput (list self normalized-perform ticks) history
   ][
-    report acos( dot-product angle1 pitch1 angle2 pitch2 )
-  ] ]
+    let min-history item 1 item 0 history
+    let min-index 0
+    let cpt 0
+    foreach history[ i ->
+      if item 1 i < min-history[
+        set min-history item 1 i
+        set min-index cpt
+      ]
+      set cpt cpt + 1
+    ]
+    if normalized-perform > min-history[
+      set history replace-item min-index history (list self normalized-perform ticks)
+    ]
+  ]
+  report return-value
 end
 
 to-report alea [ #min #max ]  ; random float in given range
   report #min + random-float (#max - #min)
 end
-
-; Copyright 2018 Sghaier and Trezzi.
 @#$#@#$#@
 GRAPHICS-WINDOW
 0
 0
-707
-728
+245
+256
 -1
 -1
-10.0
+5.0
 1
 10
 1
@@ -920,12 +489,12 @@ GRAPHICS-WINDOW
 1
 1
 1
--20
-20
--20
-20
--20
-20
+-22
+22
+-22
+22
+-22
+22
 1
 1
 1
@@ -933,38 +502,10 @@ ticks
 30.0
 
 BUTTON
-<<<<<<< HEAD
-13
-47
-148
-80
-=======
-11
-90
-234
-123
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-BUTTON
-12
 10
-<<<<<<< HEAD
-149
-=======
-234
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-43
+20
+76
+53
 NIL
 setup
 NIL
@@ -977,15 +518,14 @@ NIL
 NIL
 1
 
-<<<<<<< HEAD
 BUTTON
-13
-87
-149
-120
+10
+60
+85
+93
 NIL
-trace
-NIL
+go
+T
 1
 T
 OBSERVER
@@ -995,33 +535,26 @@ NIL
 NIL
 0
 
-MONITOR
-251
-16
-337
-61
-total agents
-count turtles
-17
+SLIDER
+10
+145
+182
+178
+r0
+r0
 1
-11
+30
+11.0
+1
+1
+NIL
+HORIZONTAL
 
 INPUTBOX
-480
-20
-550
-80
-nbg
-10.0
-1
-0
-Number
-
-INPUTBOX
-479
-84
-554
-144
+185
+25
+235
+85
 nbo
 40.0
 1
@@ -1029,10 +562,10 @@ nbo
 Number
 
 INPUTBOX
-479
-149
-556
-209
+240
+25
+290
+85
 nbi
 5.0
 1
@@ -1040,159 +573,93 @@ nbi
 Number
 
 INPUTBOX
-478
-212
-554
-272
+295
+25
+345
+85
 nbb
 45.0
 1
 0
 Number
 
-SLIDER
-26
-168
-198
-201
-puc
-puc
-0
-1
-0.0
-0.2
-1
+PLOT
+460
+10
+1035
+295
+figure 9
 NIL
-HORIZONTAL
+NIL
+0.0
+20.0
+0.0
+7.0
+true
+true
+"" ""
+PENS
+"CONTROL" 1.0 0 -16777216 true "" "if interaction-it != 0 [plot (UGIT / interaction-it)]"
+"WR" 1.0 0 -2674135 true "" "if interaction-wr != 0 [plot (UGWR / interaction-wr)]"
 
-SLIDER
-27
-207
-199
+MONITOR
 240
-pprofileswitch
-pprofileswitch
-0
+115
+360
+156
+total interactions
+interaction-it + interaction-wr + interaction-cr
+17
 1
-0.3
-=======
-SLIDER
-12
-50
-234
-83
-step-size
-step-size
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-27
-246
-199
-279
-pplc
-pplc
-0
-1
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
-<<<<<<< HEAD
-SLIDER
-26
-282
-198
-315
-pclc
-pclc
-0
-1
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-27
-321
-199
-354
-dphi
-dphi
-0
-1
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-29
-366
-201
-399
-r0
-r0
-0
-100
-30.0
-1
-1
-=======
-BUTTON
-11
-130
-234
-163
->>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
-NIL
-HORIZONTAL
-
-SLIDER
-19
-413
-191
-446
-WR_nRL
-WR_nRL
-0
 10
-2.0
+
+SLIDER
+10
+185
+182
+218
+_nBF
+_nBF
+1
+10
+1.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-21
-451
-193
-484
-WR_nBF
-WR_nBF
-0
 10
-2.0
+225
+182
+258
+_nRL
+_nRL
+1
+10
+5.0
 1
 1
 NIL
 HORIZONTAL
+
+INPUTBOX
+115
+25
+175
+85
+nbg
+10.0
+1
+0
+Number
 
 PLOT
-612
-51
-1235
-446
-UG
+460
+300
+1055
+550
+figure 10
 NIL
 NIL
 0.0
@@ -1200,157 +667,13 @@ NIL
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
-"UG" 1.0 0 -16777216 true "" "plot (UG-CONSUMER-FIREIT / NB-INTERACTION-FIREIT)"
-"pen-1" 1.0 0 -7500403 true "" "plot (UG-CONSUMER-FIREITWR / NB-INTERACTION-FIREITWR)"
-"pen-2" 1.0 0 -2674135 true "" "plot (UG-CONSUMER-FIREITCR / NB-INTERACTION-FIREITCR)"
-
-SLIDER
-220
-181
-392
-214
-pppc
-pppc
-0
-1
-0.0
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-221
-218
-393
-251
-pcpc
-pcpc
-0
-1
-0.0
-0.01
-1
-NIL
-HORIZONTAL
-
-MONITOR
-253
-67
-374
-112
-NIL
-count consumers
-17
-1
-11
-
-MONITOR
-251
-16
-482
-61
-total agents
-count turtles
-17
-1
-11
+"CONTROL" 1.0 0 -16777216 true "" "if interaction-it != 0 [plot (UGIT / interaction-it)]"
+"CR" 1.0 0 -10899396 true "" "if interaction-cr != 0 [plot (UGCR / interaction-cr)]"
 
 @#$#@#$#@
-## WHAT IS IT?
-
-This model is a 3D version of a surface-walking algorithm used in "Surface Walk 2D". Turtles approximate a user-defined surface using a simple algorithm that considers the turtle's current position relative to neighboring surface patches.
-
-## HOW IT WORKS
-
-Turtles exist in a world that consists of two different kinds of patches: surface and non-surface. Turtles follow two basic rules in order to walk along the patch-defined surface:
-
-1) Look for opposite neighboring patches. If the turtle is currently on a surface patch, it will look for a non-surface one, and vice versa.
-2) Of those neighboring patches of opposite type, identify the one that requires the smallest change in turtle angle for the turtle to face.
-3) Adjust pitch and heading halfway to the patch that requires the smallest change in angle to face and take a step.
-
-Why does this algorithm work? Consider any perturbation along a flat surface (in the case of 2D, a curve or angle along an otherwise straight line). In order to traverse the perturbation and remain on the surface, a turtle needs to find and remain on the 'edge' of the surface, and maintain its direction while traveling along this edge. Since turtles in NetLogo always report being on only one patch (the one that the center of their body is over), we maintain the turtle's position along the edge by having it search for a patch that is of opposite type to the patch it is positioned over (Rule 1).
-
-Rule 2 enables the turtles to travel along that edge while maintaining their current direction. Consider a surface in 2D: turtles are able to travel along that surface in one of two opposite directions (for example, they can walk along a circle in either a clockwise or counterclockwise direction). If a surface is flat, a turtle need not change its heading at all to continue to travel in the same direction along that surface. But, if the surface is curved or has an angle, then in order to continue to stay along the edge of the surface the turtle must change its heading. If it changes its heading exactly 180 degrees, it will reverse its direction of travel. But whether the angle is concave or convex, it will be of some measure between 0 and 360 degrees (non-inclusive). Then the heading change required to continue along the surface without reversing the direction of travel will be less than that required to reverse direction.
-
-Finally, Rule 3 reduces the 'weaving' effects produced by turtles moving toward surface and non-surface patches in order to remain close to the edge by having turtles actually point only halfway to the patch of interest.
-
-In 3D versions of this surface-walking algorithm, the same rules are used as in the 2D version, but the way to determine the angle between a turtle's current heading and the nearest opposite patch is a little more complicated. Because there are two angle measures, heading and pitch, we use the inverse dot product to determine the angle between a turtle's heading and a given patch. For more detail, it may help to look through the "Trig for Angle Calculations" section of the Code tab or visit the "Geometric Interpretation" of the dot product entry at Wikipedia: https://en.wikipedia.org/wiki/Dot_product.
-
-## HOW TO USE IT
-
-NUMBER-OF-TURTLES: Allows the user to adjust the number of turtles that will appear along the shape surface when SETUP is pressed.
-STEP-SIZE: Allows the user to adjust how far each turtle moves forward during each step.
-SURFACE-SHAPE: Allows the user to select the surface shape to appear when SETUP is pressed.
-COLORED-SURFACE?: Allows user to toggle whether the surface on which turtles will walk is colored red, or is invisible.
-SETUP: Sets up the environment by creating a surface and placing turtles along the surface.
-GO: Runs the model by asking turtles to walk along the surface.
-TRACE: Asks a random turtle to leave a trail.
-
-## THINGS TO NOTICE
-
-Try adjusting STEP-SIZE while the model is running. What happens to the motion of the turtles? What happens to their speed?
-
-Do turtles behave differently on different types of surfaces? Try using the SURFACE-SHAPE chooser to test different shapes. Try creating your own.
-
-Set the SURFACE-SHAPE chooser to "Sphere", and set NUMBER-OF-TURTLES to 1. Run the model and observe the motion of that one turtle over the sphere. Is its motion what you would expect? Try using the TRACE button to trace the turtle's trajectory over the surface, or try different surfaces.
-
-## THINGS TO TRY
-
-What might happen if the STEP-SIZE is set to 1 or larger?
-
-Currently, turtles turn half of the way to the edge patch that they identify. What happens if they turn the whole way?
-
-Select "Mickey Mouse" from the SURFACE-SHAPE chooser. SETUP and tell the model to GO. What happens to turtles when they pass over the acute angles where Mickey's ears meet his head? Try adjusting the STEP-SIZE slider while the model is running to investigate.
-
-When does the surface-walking algorithm fail? Why? Does changing the world's resolution effect turtle motion?
-
-## EXTENDING THE MODEL
-
-Currently, turtles seek the surface edge by seeking patches that are classified in certain ways. Find and implement another way that patches can be identified or that turtles can identify edge patches.
-
-Can there be more than two types or classifications of surface patches? When would this be useful?
-
-Try using `stamp` to trace the trajectory of a turtle over different kids of surfaces. How might one describe surface-walking accuracy?
-
-The surface-walking algorithm used in this model fails for surfaces (or gaps in surfaces) that are only one patch wide. Why? How might this be fixed?
-
-## NETLOGO FEATURES
-
-Note the use of `towards` and `towards-pitch` to compute headings and pitches and `min-one-of` to make a choice between competing patches.
-
-## RELATED MODELS
-
-Surface Walking (2D NetLogo model)
-
-## HOW TO CITE
-
-If you mention this model or the NetLogo software in a publication, we ask that you include the citations below.
-
-For the model itself:
-
-* Wilensky, U. (2007).  NetLogo Surface Walking 3D model.  http://ccl.northwestern.edu/netlogo/models/SurfaceWalking3D.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
-Please cite the NetLogo software as:
-
-* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
-## COPYRIGHT AND LICENSE
-
-Copyright 2007 Uri Wilensky.
-
-![CC BY-NC-SA 3.0](http://ccl.northwestern.edu/images/creativecommons/byncsa.png)
-
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
-
-Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
-
-This is a 3D version of the 2D model Surface Walking.
-
-<!-- 2007 3D -->
 @#$#@#$#@
 default
 true
@@ -1645,8 +968,11 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 3D 6.0.3
+NetLogo 3D 6.0.4
 @#$#@#$#@
+set layout? false
+setup repeat 175 [ go ]
+repeat 35 [ layout ]
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1662,5 +988,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
