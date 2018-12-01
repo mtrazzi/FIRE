@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 patches-own [ surface? ]
 globals [
    H             ; rating length
@@ -44,6 +45,26 @@ consumers-own [
   temperature
   total-UG-observed
   nb-interaction
+=======
+extensions [array]
+
+patches-own [ surface? ]
+globals [recency-sf ]
+breed [ providers provider ]
+breed [ consumers consumer ]
+turtles-own [
+  v             ;rating database for term c
+  ed            ; default level of influence of the rule
+  wr            ; weight of rating
+  rul           ; roles database
+  deltaTime     ;time difference between current time and time when rating is recorded
+]
+providers-own [up      ; mean level of performance
+  sigmap               ; std
+  perform              ; performance of providers
+]
+consumers-own [alpha ;activity level
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 ]
 ;; ===========================================================================
 ;; ============================= setup and go Procedures =============================
@@ -51,6 +72,7 @@ consumers-own [
 
 to setup
   clear-all
+<<<<<<< HEAD
   set H 10
   set maxAlpha 1
   set minAlpha 0.25
@@ -82,11 +104,56 @@ end
 
 to setup-consumer [t]
 
+=======
+  set recency-sf -5 / ln 0.5
+  ask patches [ set surface? false ]
+  draw-sphere
+  ask n-of 10 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [ set size 1
+      set color green
+      set shape "person"
+      set up 7.5
+      set sigmap 1.0
+      set perform random-normal up sigmap]
+  ]
+  ask n-of 40 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set color blue
+      set shape "person"
+      set up 2.5
+      set sigmap 2.0
+      set perform random-normal up sigmap
+    ]
+  ]
+  ask n-of 5 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [
+      set size 1
+      set color yellow
+      set shape "person"
+      set perform (random-float -5) + 5
+    ]
+  ]
+  ask n-of 45 patches with [ is-border-patch? ]
+  [
+    sprout-providers 1 [ set size 1
+      set color red
+      set shape "person"
+      set up -5
+      set sigmap 2.0
+      set perform random-normal up sigmap
+    ]
+  ]
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
    ask n-of 500 patches with [ is-border-patch? ]
   [
     sprout-consumers 1 [ set size 1
       set color white
       set shape "person"
+<<<<<<< HEAD
       set typeC t
       set history []
       set activity-level alea maxAlpha minAlpha
@@ -94,6 +161,12 @@ to setup-consumer [t]
   ]
   ]
 
+=======
+      set alpha alea 0.25 1]
+  ]
+
+  reset-ticks
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 end
 
 to setup-provider [x]
@@ -149,6 +222,7 @@ set history []
 
 end
 to go
+<<<<<<< HEAD
 
  ;; Reset UG sum for both groups of consumers.
   set UG-CONSUMER-FIREIT 0
@@ -184,6 +258,13 @@ to go
     switch-profile
   ]
   if ticks = 200 [stop]
+=======
+  ask turtles [
+    sfd 1
+  ]
+  ask n-of 10 consumers [die]
+  add-consumers
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
   tick
 
 
@@ -267,10 +348,18 @@ to add-agents
 
 end
 
+to add-consumers
+  ask n-of 10 patches with [ is-border-patch? ]
+  [
+    sprout-consumers 1 [ set size 1 set color white set shape "person"]
+  ]
+end
+
 to trace
   ask turtles [ pen-down ]
 end
 
+<<<<<<< HEAD
 to get-nearby-providers
   let listnp []
   ask providers [
@@ -687,6 +776,11 @@ to-report rho [ratings weights tr-value]
   let rho-RK (1 - e ^ (- GAMMA-I * weight-sum))
   ;; Return rho-K
   report rho-DK * rho-RK
+=======
+to interaction-trust
+
+
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 end
 
 ;; ===========================================================================
@@ -803,6 +897,9 @@ to-report angle-between [ angle1 pitch1 angle2 pitch2 ]
   ] ]
 end
 
+to-report alea [ #min #max ]  ; random float in given range
+  report #min + random-float (#max - #min)
+end
 
 ; Copyright 2018 Sghaier and Trezzi.
 @#$#@#$#@
@@ -836,10 +933,17 @@ ticks
 30.0
 
 BUTTON
+<<<<<<< HEAD
 13
 47
 148
 80
+=======
+11
+90
+234
+123
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 NIL
 go
 T
@@ -855,7 +959,11 @@ NIL
 BUTTON
 12
 10
+<<<<<<< HEAD
 149
+=======
+234
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 43
 NIL
 setup
@@ -869,6 +977,7 @@ NIL
 NIL
 1
 
+<<<<<<< HEAD
 BUTTON
 13
 87
@@ -966,6 +1075,15 @@ pprofileswitch
 0
 1
 0.3
+=======
+SLIDER
+12
+50
+234
+83
+step-size
+step-size
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 0.1
 1
 NIL
@@ -986,6 +1104,7 @@ pplc
 NIL
 HORIZONTAL
 
+<<<<<<< HEAD
 SLIDER
 26
 282
@@ -1028,6 +1147,13 @@ r0
 30.0
 1
 1
+=======
+BUTTON
+11
+130
+234
+163
+>>>>>>> b2c4eb30e089d7174675f21e839a066ff964a4da
 NIL
 HORIZONTAL
 
@@ -1118,6 +1244,17 @@ MONITOR
 112
 NIL
 count consumers
+17
+1
+11
+
+MONITOR
+251
+16
+482
+61
+total agents
+count turtles
 17
 1
 11
@@ -1508,7 +1645,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 3D 6.0.4
+NetLogo 3D 6.0.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
